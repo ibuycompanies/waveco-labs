@@ -11,7 +11,6 @@
   :root {
     --amber: #FFB000;
     --amber-dim: #CC8800;
-    --amber-glow: rgba(255, 176, 0, 0.15);
     --amber-faint: rgba(255, 176, 0, 0.06);
     --bg: #0A0A0A;
   }
@@ -47,14 +46,18 @@
     box-shadow: inset 0 0 120px rgba(0,0,0,0.7);
   }
 
+  .scanbeam {
+    position: fixed; left: 0; right: 0; height: 60px; z-index: 5; pointer-events: none;
+    background: linear-gradient(180deg, transparent 0%, rgba(255,176,0,0.03) 30%, rgba(255,176,0,0.06) 50%, rgba(255,176,0,0.03) 70%, transparent 100%);
+    animation: scanbeam 8s ease-in-out infinite;
+  }
+
   .container {
     position: relative; z-index: 4;
     max-width: 720px;
     margin: 0 auto;
     padding: 48px 24px 64px;
   }
-
-  .blank { height: 10px; }
 
   .prompt { color: var(--amber); margin-top: 4px; }
   .user { color: var(--amber-dim); }
@@ -63,6 +66,7 @@
 
   .header { color: var(--amber); font-size: 20px; letter-spacing: 6px; font-weight: bold; }
   .text { color: var(--amber-dim); }
+  .blank { height: 10px; }
 
   .dir-entry { display: flex; gap: 16px; flex-wrap: wrap; }
   .dir-name { color: var(--amber); min-width: 280px; }
@@ -81,8 +85,6 @@
   a { color: var(--amber); text-decoration: none; border-bottom: 1px solid var(--amber-faint); transition: border-color 0.2s; }
   a:hover { border-bottom-color: var(--amber); }
 
-  .footer-links { display: none; }
-
   .cursor-block {
     display: inline-block; width: 8px; height: 16px;
     background: var(--amber); vertical-align: text-bottom;
@@ -90,6 +92,7 @@
   }
 
   @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+  @keyframes scanbeam { 0% { top: -60px; } 50% { top: 100vh; } 100% { top: -60px; } }
 
   @media (max-width: 480px) {
     body { font-size: 13px; }
@@ -104,166 +107,192 @@
 <div class="scanlines"></div>
 <div class="glow"></div>
 <div class="vignette"></div>
+<div class="scanbeam"></div>
 
 <div class="container" id="terminal"></div>
 
 <script>
-// Each line is rendered sequentially — the next line only starts after the previous finishes.
-// "type" lines are typed character by character. Non-type lines appear instantly.
-// "pause" adds a delay in ms before the next line starts.
+// LINE TYPES:
+// { text, pause }             — instant print, then wait
+// { blank, pause }            — empty line, then wait
+// { divider, pause }          — divider line
+// { prompt, cmd, speed, pause } — show blinking cursor, pause, then type command char by char
+// { html, cls, pause }        — instant print with class and innerHTML
 
-const LINES = [
-  // Boot sequence — instant lines, fast cadence
-  { html: 'WAVECO LABS SYSTEMS v1.0.26', pause: 80 },
-  { html: 'Copyright (c) 2026 Waveco Labs, LLC. All rights reserved.', pause: 60 },
-  { cls: 'blank', pause: 120 },
-  { html: 'Running diagnostics...', pause: 300 },
-  { html: 'Memory check .......... OK', pause: 180 },
-  { html: 'Neural link ........... OK', pause: 180 },
-  { html: 'Quantum bridge ........ OK', pause: 180 },
-  { html: 'Consciousness array ... OK', pause: 180 },
-  { cls: 'blank', pause: 100 },
-  { html: 'All systems nominal.', pause: 200 },
-  { cls: 'divider', html: '===============================================================', pause: 300 },
-  { cls: 'blank', pause: 100 },
+var PROMPT_PREFIX = '<span class="user">visitor@waveco</span><span class="user">:</span><span class="tilde">~</span><span class="dollar">$ </span>';
+
+var LINES = [
+  // Boot
+  { text: 'WAVECO LABS SYSTEMS v1.0.26', pause: 80 },
+  { text: 'Copyright (c) 2026 Waveco Labs, LLC. All rights reserved.', pause: 60 },
+  { blank: true, pause: 120 },
+  { text: 'Running diagnostics...', pause: 300 },
+  { text: 'Memory check .......... OK', pause: 180 },
+  { text: 'Neural link ........... OK', pause: 180 },
+  { text: 'Quantum bridge ........ OK', pause: 180 },
+  { text: 'Consciousness array ... OK', pause: 180 },
+  { blank: true, pause: 100 },
+  { text: 'All systems nominal.', pause: 200 },
+  { divider: '=', pause: 300 },
+  { blank: true, pause: 100 },
 
   // About
-  { cls: 'prompt', type: true, speed: 30, cmd: 'cat /about.txt', pause: 200 },
-  { cls: 'blank', pause: 100 },
-  { cls: 'header', html: 'WAVECO LABS', type: true, speed: 45, pause: 100 },
-  { cls: 'text', html: 'We build at the edge of what\'s understood. Waveco Labs exists to', type: true, speed: 14, pause: 30 },
-  { cls: 'text', html: 'take frontier technology — artificial intelligence, consciousness', type: true, speed: 14, pause: 30 },
-  { cls: 'text', html: 'research, bioelectric systems — and turn it into products people', type: true, speed: 14, pause: 30 },
-  { cls: 'text', html: 'can actually use. Not demos. Not whitepapers. Working software', type: true, speed: 14, pause: 30 },
-  { cls: 'text', html: 'that ships.', type: true, speed: 14, pause: 100 },
-  { cls: 'blank', pause: 80 },
-  { cls: 'divider', html: '---------------------------------------------------------------', pause: 200 },
-  { cls: 'blank', pause: 100 },
+  { prompt: true, cmd: 'cat /about.txt', speed: 30, waitBefore: 1200, pause: 200 },
+  { blank: true, pause: 100 },
+  { html: 'WAVECO LABS', cls: 'header', pause: 60 },
+  { text: 'We build at the edge of what\'s understood. Waveco Labs exists to', pause: 20 },
+  { text: 'take frontier technology \u2014 artificial intelligence, consciousness', pause: 20 },
+  { text: 'research, bioelectric systems \u2014 and turn it into products people', pause: 20 },
+  { text: 'can actually use. Not demos. Not whitepapers. Working software', pause: 20 },
+  { text: 'that ships.', pause: 100 },
+  { blank: true, pause: 80 },
+  { divider: '-', pause: 200 },
+  { blank: true, pause: 100 },
 
   // Focus areas
-  { cls: 'prompt', type: true, speed: 30, cmd: 'ls /focus-areas/', pause: 200 },
-  { cls: 'blank', pause: 100 },
-  { cls: 'dir-entry', html: '<span class="dir-name">  artificial-intelligence/</span><span class="dir-desc">Autonomous systems, LLM deployment, agentic workflows</span>', pause: 120 },
-  { cls: 'dir-entry', html: '<span class="dir-name">  consciousness-tech/</span><span class="dir-desc">Bioelectric sensing, neurofeedback, inner-state mapping</span>', pause: 120 },
-  { cls: 'dir-entry', html: '<span class="dir-name">  frontier-commercialization/</span><span class="dir-desc">Bridging breakthrough research and market-ready products</span>', pause: 120 },
-  { cls: 'blank', pause: 80 },
-  { cls: 'divider', html: '---------------------------------------------------------------', pause: 200 },
-  { cls: 'blank', pause: 100 },
+  { prompt: true, cmd: 'ls /focus-areas/', speed: 30, waitBefore: 1000, pause: 200 },
+  { blank: true, pause: 100 },
+  { html: '<span class="dir-name">  artificial-intelligence/</span><span class="dir-desc">Autonomous systems, LLM deployment, agentic workflows</span>', cls: 'dir-entry', pause: 120 },
+  { html: '<span class="dir-name">  consciousness-tech/</span><span class="dir-desc">Bioelectric sensing, neurofeedback, inner-state mapping</span>', cls: 'dir-entry', pause: 120 },
+  { html: '<span class="dir-name">  frontier-commercialization/</span><span class="dir-desc">Bridging breakthrough research and market-ready products</span>', cls: 'dir-entry', pause: 120 },
+  { blank: true, pause: 80 },
+  { divider: '-', pause: 200 },
+  { blank: true, pause: 100 },
 
   // Product
-  { cls: 'prompt', type: true, speed: 30, cmd: 'cat /products/lune.txt', pause: 200 },
-  { cls: 'blank', pause: 100 },
-  { cls: 'product-name', html: 'LUNE', type: true, speed: 60, pause: 100 },
-  { cls: 'product-sub', html: 'Cycle Tracking · Moon Phases · 6 Hand-Crafted Skins', type: true, speed: 16, pause: 100 },
-  { cls: 'blank', pause: 80 },
-  { cls: 'text', html: 'A cycle tracking app built around original artwork, lunar', type: true, speed: 14, pause: 30 },
-  { cls: 'text', html: 'rhythms, and radical privacy. Six hand-crafted visual themes.', type: true, speed: 14, pause: 30 },
-  { cls: 'text', html: 'All data stays on your device. No accounts, no cloud, no', type: true, speed: 14, pause: 30 },
-  { cls: 'text', html: 'tracking. Your body, your data, your phone.', type: true, speed: 14, pause: 100 },
-  { cls: 'blank', pause: 80 },
+  { prompt: true, cmd: 'cat /products/lune.txt', speed: 30, waitBefore: 1200, pause: 200 },
+  { blank: true, pause: 100 },
+  { html: 'LUNE', cls: 'product-name', pause: 60 },
+  { html: 'Cycle Tracking \u00b7 Moon Phases \u00b7 6 Hand-Crafted Skins', cls: 'product-sub', pause: 60 },
+  { blank: true, pause: 80 },
+  { text: 'A cycle tracking app built around original artwork, lunar', pause: 20 },
+  { text: 'rhythms, and radical privacy. Six hand-crafted visual themes.', pause: 20 },
+  { text: 'All data stays on your device. No accounts, no cloud, no', pause: 20 },
+  { text: 'tracking. Your body, your data, your phone.', pause: 100 },
+  { blank: true, pause: 80 },
   { html: '<span class="status-badge">STATUS: Coming soon to the App Store</span>', pause: 200 },
-  { cls: 'blank', pause: 80 },
-  { cls: 'divider', html: '---------------------------------------------------------------', pause: 200 },
-  { cls: 'blank', pause: 100 },
+  { blank: true, pause: 80 },
+  { divider: '-', pause: 200 },
+  { blank: true, pause: 100 },
 
   // Contact
-  { cls: 'prompt', type: true, speed: 30, cmd: 'cat /contact.txt', pause: 200 },
-  { cls: 'blank', pause: 100 },
-  { html: '<a href="mailto:info@wavecolabs.com">Email: info@wavecolabs.com</a>', type: true, speed: 16, pause: 60 },
-  { html: '<a href="https://wavecolabs.com">Web:   wavecolabs.com</a>', type: true, speed: 16, pause: 100 },
-  { cls: 'blank', pause: 80 },
-  { cls: 'divider', html: '---------------------------------------------------------------', pause: 200 },
-  { cls: 'blank', pause: 100 },
+  { prompt: true, cmd: 'cat /contact.txt', speed: 30, waitBefore: 800, pause: 200 },
+  { blank: true, pause: 100 },
+  { html: '<a href="mailto:info@wavecolabs.com">Email: info@wavecolabs.com</a>', pause: 60 },
+  { html: '<a href="https://wavecolabs.com">Web:   wavecolabs.com</a>', pause: 100 },
+  { blank: true, pause: 80 },
+  { divider: '-', pause: 200 },
+  { blank: true, pause: 100 },
 
   // Final cursor
-  { cls: 'prompt', final_cursor: true },
+  { finalCursor: true },
 ];
 
-const terminal = document.getElementById('terminal');
-let lineIdx = 0;
+var terminal = document.getElementById('terminal');
+var lineIdx = 0;
 
 function scrollDown() {
   window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 }
 
-function typeChars(el, text, speed, callback) {
-  let i = 0;
-  const iv = setInterval(() => {
+function createDiv(cls) {
+  var div = document.createElement('div');
+  if (cls) div.className = cls;
+  terminal.appendChild(div);
+  return div;
+}
+
+function typeCommand(el, prefix, cmd, speed, callback) {
+  el.innerHTML = prefix;
+  var cmdSpan = document.createElement('span');
+  el.appendChild(cmdSpan);
+  var i = 0;
+  var iv = setInterval(function() {
     i++;
-    el.textContent = text.slice(0, i);
+    cmdSpan.textContent = cmd.slice(0, i);
     scrollDown();
-    if (i >= text.length) {
+    if (i >= cmd.length) {
       clearInterval(iv);
       callback();
     }
   }, speed);
 }
 
-function renderLine(line) {
-  const div = document.createElement('div');
-  if (line.cls) div.className = line.cls;
+function processLine() {
+  if (lineIdx >= LINES.length) return;
+  var line = LINES[lineIdx];
+  lineIdx++;
 
-  // Final cursor line
-  if (line.final_cursor) {
-    div.className = 'prompt';
-    div.innerHTML = '<span class="user">visitor@waveco</span><span class="user">:</span><span class="tilde">~</span><span class="dollar">$ </span><span class="cursor-block"></span>';
-    terminal.appendChild(div);
+  // Final blinking cursor
+  if (line.finalCursor) {
+    var div = createDiv('prompt');
+    div.innerHTML = PROMPT_PREFIX + '<span class="cursor-block"></span>';
     scrollDown();
-    return; // done — no next line
+    return;
   }
 
-  // Blank lines
-  if (line.cls === 'blank') {
-    div.className = 'blank';
-    terminal.appendChild(div);
+  // Blank
+  if (line.blank) {
+    createDiv('blank');
     scrollDown();
-    setTimeout(nextLine, line.pause || 50);
+    setTimeout(processLine, line.pause || 50);
     return;
   }
 
-  terminal.appendChild(div);
-
-  // Prompt lines with typing command
-  if (line.cmd) {
-    const prefix = '<span class="user">visitor@waveco</span><span class="user">:</span><span class="tilde">~</span><span class="dollar">$ </span>';
-    div.innerHTML = prefix;
-    const cmdSpan = document.createElement('span');
-    div.appendChild(cmdSpan);
-    typeChars(cmdSpan, line.cmd, line.speed || 30, () => {
-      setTimeout(nextLine, line.pause || 100);
-    });
+  // Divider
+  if (line.divider) {
+    var ch = line.divider === '=' ? '=' : '-';
+    var div = createDiv('divider');
+    div.textContent = new Array(64).join(ch);
+    scrollDown();
+    setTimeout(processLine, line.pause || 50);
     return;
   }
 
-  // Typed content lines
-  if (line.type && line.html) {
-    // Extract plain text for typing, then swap in full HTML when done
-    const temp = document.createElement('div');
-    temp.innerHTML = line.html;
-    const plainText = temp.textContent;
+  // Prompt with typed command
+  if (line.prompt) {
+    // First show blinking cursor and wait
+    var waitDiv = createDiv('prompt');
+    waitDiv.innerHTML = PROMPT_PREFIX + '<span class="cursor-block"></span>';
+    scrollDown();
 
-    typeChars(div, plainText, line.speed || 14, () => {
-      div.innerHTML = line.html;
-      setTimeout(nextLine, line.pause || 50);
-    });
+    setTimeout(function() {
+      // Remove the waiting cursor line
+      terminal.removeChild(waitDiv);
+
+      // Create the real prompt line and type the command
+      var cmdDiv = createDiv('prompt');
+      typeCommand(cmdDiv, PROMPT_PREFIX, line.cmd, line.speed || 30, function() {
+        setTimeout(processLine, line.pause || 100);
+      });
+    }, line.waitBefore || 800);
     return;
   }
 
-  // Instant lines
-  div.innerHTML = line.html || '';
-  scrollDown();
-  setTimeout(nextLine, line.pause || 50);
-}
-
-function nextLine() {
-  if (lineIdx < LINES.length) {
-    renderLine(LINES[lineIdx]);
-    lineIdx++;
+  // HTML content (instant)
+  if (line.html !== undefined) {
+    var div = createDiv(line.cls || '');
+    div.innerHTML = line.html;
+    scrollDown();
+    setTimeout(processLine, line.pause || 50);
+    return;
   }
+
+  // Plain text (instant)
+  if (line.text !== undefined) {
+    var div = createDiv('text');
+    div.textContent = line.text;
+    scrollDown();
+    setTimeout(processLine, line.pause || 50);
+    return;
+  }
+
+  // Fallback
+  setTimeout(processLine, 50);
 }
 
 // Start
-nextLine();
+processLine();
 </script>
 
 </body>
