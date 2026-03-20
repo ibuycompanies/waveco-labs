@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waveco Labs</title>
+<meta name="description" content="Waveco Labs — AI, consciousness tech, and frontier commercialization.">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --amber: #FFB000;
+    --amber-dim: #CC8800;
+    --amber-glow: rgba(255, 176, 0, 0.15);
+    --amber-faint: rgba(255, 176, 0, 0.06);
+    --bg: #0A0A0A;
+  }
+
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--amber-dim);
+    overflow-x: hidden;
+  }
+
+  ::selection { background: rgba(255, 176, 0, 0.3); color: var(--amber); }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: rgba(255, 176, 0, 0.2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255, 176, 0, 0.4); }
+
+  .scanlines {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 2; pointer-events: none;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+  }
+
+  .glow {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(255,176,0,0.03) 0%, transparent 60%);
+  }
+
+  .vignette {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 3; pointer-events: none;
+    box-shadow: inset 0 0 120px rgba(0,0,0,0.7);
+  }
+
+  .container {
+    position: relative; z-index: 4;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px 64px;
+  }
+
+  .blank { height: 10px; }
+
+  .prompt { color: var(--amber); margin-top: 4px; }
+  .user { color: var(--amber-dim); }
+  .tilde { color: var(--amber); }
+  .dollar { color: var(--amber-dim); }
+
+  .header { color: var(--amber); font-size: 20px; letter-spacing: 6px; font-weight: bold; }
+  .text { color: var(--amber-dim); }
+
+  .dir-entry { display: flex; gap: 16px; flex-wrap: wrap; }
+  .dir-name { color: var(--amber); min-width: 280px; }
+  .dir-desc { color: var(--amber-dim); font-size: 13px; opacity: 0.7; }
+
+  .product-name { color: var(--amber); font-size: 18px; letter-spacing: 4px; font-weight: bold; }
+  .product-sub { color: var(--amber-dim); font-size: 13px; letter-spacing: 1px; }
+
+  .status-badge {
+    display: inline-block; border: 1px solid var(--amber-dim);
+    padding: 4px 12px; color: var(--amber); font-size: 13px; letter-spacing: 1px;
+  }
+
+  .divider { color: var(--amber-dim); opacity: 0.3; letter-spacing: 2px; }
+
+  a { color: var(--amber); text-decoration: none; border-bottom: 1px solid var(--amber-faint); transition: border-color 0.2s; }
+  a:hover { border-bottom-color: var(--amber); }
+
+  .footer-links { display: none; }
+
+  .cursor-block {
+    display: inline-block; width: 8px; height: 16px;
+    background: var(--amber); vertical-align: text-bottom;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+  @media (max-width: 480px) {
+    body { font-size: 13px; }
+    .container { padding: 32px 16px 48px; }
+    .header { font-size: 16px; letter-spacing: 4px; }
+    .dir-name { min-width: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+<div class="glow"></div>
+<div class="vignette"></div>
+
+<div class="container" id="terminal"></div>
+
+<script>
+// Each line is rendered sequentially — the next line only starts after the previous finishes.
+// "type" lines are typed character by character. Non-type lines appear instantly.
+// "pause" adds a delay in ms before the next line starts.
+
+const LINES = [
+  // Boot sequence — instant lines, fast cadence
+  { html: 'WAVECO LABS SYSTEMS v1.0.26', pause: 80 },
+  { html: 'Copyright (c) 2026 Waveco Labs, LLC. All rights reserved.', pause: 60 },
+  { cls: 'blank', pause: 120 },
+  { html: 'Running diagnostics...', pause: 300 },
+  { html: 'Memory check .......... OK', pause: 180 },
+  { html: 'Neural link ........... OK', pause: 180 },
+  { html: 'Quantum bridge ........ OK', pause: 180 },
+  { html: 'Consciousness array ... OK', pause: 180 },
+  { cls: 'blank', pause: 100 },
+  { html: 'All systems nominal.', pause: 200 },
+  { cls: 'divider', html: '===============================================================', pause: 300 },
+  { cls: 'blank', pause: 100 },
+
+  // About
+  { cls: 'prompt', type: true, speed: 30, cmd: 'cat /about.txt', pause: 200 },
+  { cls: 'blank', pause: 100 },
+  { cls: 'header', html: 'WAVECO LABS', type: true, speed: 45, pause: 100 },
+  { cls: 'text', html: 'We build at the edge of what\'s understood. Waveco Labs exists to', type: true, speed: 14, pause: 30 },
+  { cls: 'text', html: 'take frontier technology — artificial intelligence, consciousness', type: true, speed: 14, pause: 30 },
+  { cls: 'text', html: 'research, bioelectric systems — and turn it into products people', type: true, speed: 14, pause: 30 },
+  { cls: 'text', html: 'can actually use. Not demos. Not whitepapers. Working software', type: true, speed: 14, pause: 30 },
+  { cls: 'text', html: 'that ships.', type: true, speed: 14, pause: 100 },
+  { cls: 'blank', pause: 80 },
+  { cls: 'divider', html: '---------------------------------------------------------------', pause: 200 },
+  { cls: 'blank', pause: 100 },
+
+  // Focus areas
+  { cls: 'prompt', type: true, speed: 30, cmd: 'ls /focus-areas/', pause: 200 },
+  { cls: 'blank', pause: 100 },
+  { cls: 'dir-entry', html: '<span class="dir-name">  artificial-intelligence/</span><span class="dir-desc">Autonomous systems, LLM deployment, agentic workflows</span>', pause: 120 },
+  { cls: 'dir-entry', html: '<span class="dir-name">  consciousness-tech/</span><span class="dir-desc">Bioelectric sensing, neurofeedback, inner-state mapping</span>', pause: 120 },
+  { cls: 'dir-entry', html: '<span class="dir-name">  frontier-commercialization/</span><span class="dir-desc">Bridging breakthrough research and market-ready products</span>', pause: 120 },
+  { cls: 'blank', pause: 80 },
+  { cls: 'divider', html: '---------------------------------------------------------------', pause: 200 },
+  { cls: 'blank', pause: 100 },
+
+  // Product
+  { cls: 'prompt', type: true, speed: 30, cmd: 'cat /products/lune.txt', pause: 200 },
+  { cls: 'blank', pause: 100 },
+  { cls: 'product-name', html: 'LUNE', type: true, speed: 60, pause: 100 },
+  { cls: 'product-sub', html: 'Cycle Tracking · Moon Phases · 6 Hand-Crafted Skins', type: true, speed: 16, pause: 100 },
+  { cls: 'blank', pause: 80 },
+  { cls: 'text', html: 'A cycle tracking app built around original artwork, lunar', type: true, speed: 14, pause: 30 },
+  { cls: 'text', html: 'rhythms, and radical privacy. Six hand-crafted visual themes.', type: true, speed: 14, pause: 30 },
+  { cls: 'text', html: 'All data stays on your device. No accounts, no cloud, no', type: true, speed: 14, pause: 30 },
+  { cls: 'text', html: 'tracking. Your body, your data, your phone.', type: true, speed: 14, pause: 100 },
+  { cls: 'blank', pause: 80 },
+  { html: '<span class="status-badge">STATUS: Coming soon to the App Store</span>', pause: 200 },
+  { cls: 'blank', pause: 80 },
+  { cls: 'divider', html: '---------------------------------------------------------------', pause: 200 },
+  { cls: 'blank', pause: 100 },
+
+  // Contact
+  { cls: 'prompt', type: true, speed: 30, cmd: 'cat /contact.txt', pause: 200 },
+  { cls: 'blank', pause: 100 },
+  { html: '<a href="mailto:info@wavecolabs.com">Email: info@wavecolabs.com</a>', type: true, speed: 16, pause: 60 },
+  { html: '<a href="https://wavecolabs.com">Web:   wavecolabs.com</a>', type: true, speed: 16, pause: 100 },
+  { cls: 'blank', pause: 80 },
+  { cls: 'divider', html: '---------------------------------------------------------------', pause: 200 },
+  { cls: 'blank', pause: 100 },
+
+  // Final cursor
+  { cls: 'prompt', final_cursor: true },
+];
+
+const terminal = document.getElementById('terminal');
+let lineIdx = 0;
+
+function scrollDown() {
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+}
+
+function typeChars(el, text, speed, callback) {
+  let i = 0;
+  const iv = setInterval(() => {
+    i++;
+    el.textContent = text.slice(0, i);
+    scrollDown();
+    if (i >= text.length) {
+      clearInterval(iv);
+      callback();
+    }
+  }, speed);
+}
+
+function renderLine(line) {
+  const div = document.createElement('div');
+  if (line.cls) div.className = line.cls;
+
+  // Final cursor line
+  if (line.final_cursor) {
+    div.className = 'prompt';
+    div.innerHTML = '<span class="user">visitor@waveco</span><span class="user">:</span><span class="tilde">~</span><span class="dollar">$ </span><span class="cursor-block"></span>';
+    terminal.appendChild(div);
+    scrollDown();
+    return; // done — no next line
+  }
+
+  // Blank lines
+  if (line.cls === 'blank') {
+    div.className = 'blank';
+    terminal.appendChild(div);
+    scrollDown();
+    setTimeout(nextLine, line.pause || 50);
+    return;
+  }
+
+  terminal.appendChild(div);
+
+  // Prompt lines with typing command
+  if (line.cmd) {
+    const prefix = '<span class="user">visitor@waveco</span><span class="user">:</span><span class="tilde">~</span><span class="dollar">$ </span>';
+    div.innerHTML = prefix;
+    const cmdSpan = document.createElement('span');
+    div.appendChild(cmdSpan);
+    typeChars(cmdSpan, line.cmd, line.speed || 30, () => {
+      setTimeout(nextLine, line.pause || 100);
+    });
+    return;
+  }
+
+  // Typed content lines
+  if (line.type && line.html) {
+    // Extract plain text for typing, then swap in full HTML when done
+    const temp = document.createElement('div');
+    temp.innerHTML = line.html;
+    const plainText = temp.textContent;
+
+    typeChars(div, plainText, line.speed || 14, () => {
+      div.innerHTML = line.html;
+      setTimeout(nextLine, line.pause || 50);
+    });
+    return;
+  }
+
+  // Instant lines
+  div.innerHTML = line.html || '';
+  scrollDown();
+  setTimeout(nextLine, line.pause || 50);
+}
+
+function nextLine() {
+  if (lineIdx < LINES.length) {
+    renderLine(LINES[lineIdx]);
+    lineIdx++;
+  }
+}
+
+// Start
+nextLine();
+</script>
+
+</body>
+</html>
